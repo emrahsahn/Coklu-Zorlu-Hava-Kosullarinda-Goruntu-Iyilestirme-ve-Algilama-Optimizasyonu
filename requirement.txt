@@ -1,0 +1,19 @@
+# CIDNet: Color and Intensity Decoupling Network
+# Low-Light Image Enhancement with HVI Color Space
+
+# Core dependencies
+torch>=2.0.0
+torchvision>=0.15.0
+numpy>=1.24.0
+pillow>=10.0.0
+
+# Training & monitoring
+tensorboard>=2.14.0
+tqdm>=4.65.0
+
+# Dataset & utilities
+kagglehub>=0.2.0
+pypdf>=3.17.0
+
+# Optional: For faster data loading
+opencv-python>=4.8.0
