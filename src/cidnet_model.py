@@ -7,6 +7,7 @@ Main architecture with dual-branch UNet and Lighten Cross-Attention (LCA) module
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from hvi_transform import RGB_HVI
 
 
 class FeatureEmbedding(nn.Module):
@@ -206,6 +207,9 @@ class CIDNet(nn.Module):
     def __init__(self, base_channels=32, num_heads=4):
         super(CIDNet, self).__init__()
         
+        # HVI Transform
+        self.trans = RGB_HVI()
+        
         # Initial convolutions for each branch
         self.hv_init_conv = nn.Conv2d(2, base_channels, kernel_size=3, padding=1)  # HV has 2 channels
         self.i_init_conv = nn.Conv2d(1, base_channels, kernel_size=3, padding=1)   # I has 1 channel
@@ -237,16 +241,19 @@ class CIDNet(nn.Module):
         self.hv_out_conv = nn.Conv2d(base_channels, 2, kernel_size=3, padding=1)
         self.i_out_conv = nn.Conv2d(base_channels, 1, kernel_size=3, padding=1)
     
-    def forward(self, hv_map, intensity_map):
+    def forward(self, rgb_image):
         """
         Args:
-            hv_map: Input HV color map [B, 2, H, W]
-            intensity_map: Input intensity map [B, 1, H, W]
+            rgb_image: Input RGB image [B, 3, H, W]
         
         Returns:
-            enhanced_hv: Enhanced HV map [B, 2, H, W]
-            enhanced_i: Enhanced intensity map [B, 1, H, W]
+            enhanced_rgb: Enhanced RGB image [B, 3, H, W]
         """
+        # Transform RGB to HVI space
+        hvi = self.trans.HVIT(rgb_image)
+        hv_map = hvi[:, :2, :, :]  # HV channels
+        intensity_map = hvi[:, 2:3, :, :]  # I channel
+        
         # Initial feature extraction
         hv_feat = self.hv_init_conv(hv_map)
         i_feat = self.i_init_conv(intensity_map)
@@ -278,7 +285,11 @@ class CIDNet(nn.Module):
         enhanced_hv = self.hv_out_conv(hv_dec2) + hv_map
         enhanced_i = self.i_out_conv(i_dec2) + intensity_map
         
-        return enhanced_hv, enhanced_i
+        # Reconstruct HVI and convert back to RGB
+        enhanced_hvi = torch.cat([enhanced_hv, enhanced_i], dim=1)
+        enhanced_rgb = self.trans.PHVIT(enhanced_hvi)
+        
+        return enhanced_rgb
 
 
 # Test the model

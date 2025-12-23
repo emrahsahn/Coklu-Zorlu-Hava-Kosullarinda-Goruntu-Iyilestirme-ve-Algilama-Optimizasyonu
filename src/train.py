@@ -28,7 +28,7 @@ def train_epoch(pipeline, dataloader, optimizer, epoch, writer, device):
         
         # Forward pass and compute loss
         optimizer.zero_grad()
-        loss, loss_dict, enhanced = pipeline.compute_loss(low_rgb, high_rgb)
+        loss, loss_dict, enhanced = pipeline.compute_loss(low_rgb, high_rgb, gamma=1.0)
         
         # Backward pass
         loss.backward()
@@ -69,7 +69,7 @@ def validate(pipeline, dataloader, epoch, writer, device):
             high_rgb = batch['high'].to(device)
             
             # Forward pass
-            loss, loss_dict, enhanced = pipeline.compute_loss(low_rgb, high_rgb)
+            loss, loss_dict, enhanced = pipeline.compute_loss(low_rgb, high_rgb, gamma=1.0)
             
             # Accumulate losses
             total_loss += loss.item()
@@ -139,16 +139,16 @@ def main():
         train_dataset, 
         batch_size=args.batch_size, 
         shuffle=True, 
-        num_workers=4,
-        pin_memory=True
+        num_workers=0,  # Windows compatibility
+        pin_memory=False  # More stable on Windows
     )
     
     val_loader = DataLoader(
         val_dataset,
         batch_size=args.batch_size,
         shuffle=False,
-        num_workers=4,
-        pin_memory=True
+        num_workers=0,  # Windows compatibility
+        pin_memory=False  # More stable on Windows
     )
     
     # Initialize pipeline
@@ -166,7 +166,7 @@ def main():
     print(f"Trainable parameters: {trainable_params/1e6:.2f}M")
     
     # Setup optimizer
-    params = list(pipeline.hvi_transform.parameters()) + list(pipeline.cidnet.parameters())
+    params = list(pipeline.cidnet.parameters())
     optimizer = optim.AdamW(params, lr=args.lr, weight_decay=1e-4)
     
     # Learning rate scheduler

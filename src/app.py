@@ -4,9 +4,13 @@ import os
 from PIL import Image
 import numpy as np
 import torchvision.transforms as transforms
+import sys
+
+# Add src to path for imports
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 # Import CIDNet components
-from hvi_transform import HVITransform, InverseHVITransform
+from hvi_transform import RGB_HVI
 from cidnet_model import CIDNet
 from losses import CIDNetLoss
 
@@ -75,10 +79,13 @@ class CIDNetPipeline:
                  base_channels=32, num_heads=4):
         self.device = device
         
-        # Initialize components
-        self.hvi_transform = HVITransform(k=1.0, gamma_G=0.5, gamma_B=0.5).to(device)
+        # Initialize CIDNet with integrated HVI transforms
         self.cidnet = CIDNet(base_channels=base_channels, num_heads=num_heads).to(device)
-        self.inverse_hvi = InverseHVITransform(self.hvi_transform).to(device)
+        
+        # Set transform parameters like in original app.py
+        self.cidnet.trans.gated = True
+        self.cidnet.trans.gated2 = True
+        
         self.criterion = CIDNetLoss(
             lambda_l1=1.0,
             lambda_edge=0.5,
@@ -87,34 +94,34 @@ class CIDNetPipeline:
             use_perceptual=True
         ).to(device)
     
-    def forward(self, low_rgb):
+    def forward(self, low_rgb, gamma=1.0):
         """
         Forward pass: RGB -> HVI -> Enhanced HVI -> Enhanced RGB
         
         Args:
             low_rgb: Low-light RGB image [B, 3, H, W]
+            gamma: Gamma correction parameter (default 1.0)
         
         Returns:
             enhanced_rgb: Enhanced RGB image [B, 3, H, W]
         """
-        # Step 1: Transform to HVI
-        hv_map, intensity_map = self.hvi_transform(low_rgb)
+        # Apply gamma correction to input like in original app.py
+        input_corrected = low_rgb ** gamma
         
-        # Step 2: Enhance in HVI space
-        enhanced_hv, enhanced_i = self.cidnet(hv_map, intensity_map)
+        # Forward through CIDNet (includes HVI transforms)
+        enhanced_rgb = self.cidnet(input_corrected)
         
-        # Step 3: Transform back to RGB
-        enhanced_rgb = self.inverse_hvi(enhanced_hv, enhanced_i)
-        
-        return enhanced_rgb, enhanced_hv, enhanced_i, hv_map, intensity_map
+        return enhanced_rgb
     
-    def compute_loss(self, low_rgb, high_rgb):
+    
+    def compute_loss(self, low_rgb, high_rgb, gamma=1.0):
         """
         Compute loss for training
         
         Args:
             low_rgb: Low-light RGB [B, 3, H, W]
             high_rgb: Ground truth RGB [B, 3, H, W]
+            gamma: Gamma correction parameter
         
         Returns:
             loss: Total loss
@@ -122,34 +129,24 @@ class CIDNetPipeline:
             enhanced_rgb: Enhanced output
         """
         # Forward pass
-        enhanced_rgb, enhanced_hv, enhanced_i, hv_map, intensity_map = self.forward(low_rgb)
+        enhanced_rgb = self.forward(low_rgb, gamma)
         
-        # Get target HVI
-        target_hv, target_i = self.hvi_transform(high_rgb)
-        
-        # Concatenate HVI for loss computation
-        pred_hvi = torch.cat([enhanced_hv, enhanced_i], dim=1)
-        target_hvi = torch.cat([target_hv, target_i], dim=1)
-        
-        # Compute loss
-        loss, loss_dict = self.criterion(enhanced_rgb, high_rgb, pred_hvi, target_hvi)
+        # Compute loss (simplified for RGB-to-RGB comparison)
+        loss, loss_dict = self.criterion(enhanced_rgb, high_rgb, enhanced_rgb, high_rgb)
         
         return loss, loss_dict, enhanced_rgb
     
     def train_mode(self):
         """Set to training mode"""
-        self.hvi_transform.train()
         self.cidnet.train()
     
     def eval_mode(self):
         """Set to evaluation mode"""
-        self.hvi_transform.eval()
         self.cidnet.eval()
     
     def save_checkpoint(self, filepath):
         """Save model checkpoint"""
         checkpoint = {
-            'hvi_transform': self.hvi_transform.state_dict(),
             'cidnet': self.cidnet.state_dict(),
         }
         torch.save(checkpoint, filepath)
@@ -158,7 +155,6 @@ class CIDNetPipeline:
     def load_checkpoint(self, filepath):
         """Load model checkpoint"""
         checkpoint = torch.load(filepath, map_location=self.device)
-        self.hvi_transform.load_state_dict(checkpoint['hvi_transform'])
         self.cidnet.load_state_dict(checkpoint['cidnet'])
         print(f"Checkpoint loaded from {filepath}")
 
@@ -200,55 +196,5 @@ if __name__ == "__main__":
     print("Loss components:")
     for key, val in loss_dict.items():
         print(f"  {key}: {val:.6f}")
-
-
-#######################################
-
-class LowLightDataset(Dataset):
-    def __init__(self, data_root_path, split='train', img_size=(512, 512)):
-        """
-        Başlatıcı metod. Veri yollarını ve parametreleri ayarlar.
-        
-        Args:
-            data_root_path (str): LOL veya SID veri setinin kök dizini.
-            split (str): 'train', 'val' veya 'test' olarak veri kümesi türü.
-            img_size (tuple): Görüntülerin yeniden boyutlandırılacağı boyut.
-        """
-        self.img_size = img_size
-        # Veri setinizin iç yapısına göre 'input' ve 'ground_truth' klasörlerini ayarlayın
-        # LOL veri seti için genellikle 'our485' içinde 'low' ve 'high' klasörleri bulunur.
-        self.low_light_dir = os.path.join(data_root_path, split, 'low')
-        self.high_light_dir = os.path.join(data_root_path, split, 'high')
-
-        self.file_names = sorted(os.listdir(self.low_light_dir))
-
-        print(f"{split.capitalize()} kümesi için {len(self.file_names)} çift bulundu.")
-
-    def __len__(self):
-        """Toplam görüntü çifti sayısını döndürür."""
-        return len(self.file_names)
-
-    def __getitem__(self, idx):
-        """
-        Veri kümesinden bir görüntü çiftini yükler, işler ve döndürür.
-        """
-
-        filename = self.file_names[idx]
-
-        # 1. görüntüleri yükleme
-        low_path = os.path.join(self.low_light_dir, filename)
-        high_path = os.path.join(self.high_light_dir, filename)
-
-        # hata kontrolü eklenmesi önerilir
-        low_img = Image.open(low_path).convert('RGB')
-        high_img = Image.open(high_path).convert('RGB')
-
-        # 2. Ön İşleme: (Resize, Normalize, Totensor)
-
-        #Resize
-        low_img = low_img.resize(self.img_size)
-        high_img = high_img.resize(self.img_size)
-
-        # PIL'den Numpy'a ardından tensöre dnüştürme ve normalizasyon
 
 
