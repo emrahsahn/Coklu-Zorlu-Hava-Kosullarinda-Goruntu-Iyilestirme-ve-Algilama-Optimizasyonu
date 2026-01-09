@@ -86,6 +86,10 @@ class CIDNetPipeline:
         self.cidnet.trans.gated = True
         self.cidnet.trans.gated2 = True
         
+        # Fix saturation issue - use lower default values
+        self.cidnet.trans.alpha_s = 1.0  # was 1.3, causing blue tint
+        self.cidnet.trans.alpha = 1.0    # intensity
+        
         self.criterion = CIDNetLoss(
             lambda_l1=1.0,
             lambda_edge=0.5,
