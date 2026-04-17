@@ -3,8 +3,8 @@ CCM Test Script
 Düşük ışık görüntü iyileştirme test ve karşılaştırma fonksiyonları
 
 Kullanım:
-    python src/ccm_complete2.py                          # Varsayılan test
-    python src/ccm_complete2.py --image data/test.png    # Belirli bir görüntü
+    python "src_low_light/CCM Combined/ccm_test.py"  # Varsayılan test
+    python "src_low_light/CCM Combined/ccm_test.py" --image data/test.png
 """
 
 import torch
@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import torchvision.transforms as transforms
 import os
 import argparse
+from pathlib import Path
 
 # Model import
 from ccm_model import (
@@ -23,6 +24,10 @@ from ccm_model import (
     check_device_info,
     load_trained_model
 )
+
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent.parent
+DEFAULT_COMBINED_CHECKPOINT = str(PROJECT_ROOT / 'src_low_light' / 'checkpoints' / 'ccm' / 'best_combined_model.pth')
 
 
 def print_channel_analysis(name, tensor):
@@ -175,13 +180,13 @@ def compare_with_ground_truth(low_light_path, high_light_path, checkpoint_path=N
     
     # Channel analysis
     print(f"\n[ANALYSIS] RENK KANAL ANALIZI:")
-    print(f"{'─'*80}")
+    print(f"{'-'*80}")
     print_channel_analysis("Dusuk Isik (Original)", low_tensor)
     print_channel_analysis("CCM Ciktisi", corrected_ccm)
     print_channel_analysis("Enhanced Illumination", enhanced_illum)
     print_channel_analysis("Combined Ciktisi", corrected_combined)
     print_channel_analysis("Ground Truth (Normal)", high_tensor)
-    print(f"{'─'*80}")
+    print(f"{'-'*80}")
     
     # Error analysis
     diff_low_gt = torch.abs(low_tensor - high_tensor).mean()
@@ -189,11 +194,11 @@ def compare_with_ground_truth(low_light_path, high_light_path, checkpoint_path=N
     improvement_combined = (diff_low_gt - diff_combined) / diff_low_gt * 100
     
     print(f"\n[ERROR] HATA ANALIZI (MAE - Mean Absolute Error):")
-    print(f"{'─'*80}")
+    print(f"{'-'*80}")
     print(f"Dusuk Isik -> Ground Truth:         {diff_low_gt:.6f} (baseline)")
     print(f"CCM Ciktisi -> Ground Truth:        {diff_ccm:.6f} ({improvement_ccm:+.2f}%)")
     print(f"Combined Ciktisi -> Ground Truth:   {diff_combined:.6f} ({improvement_combined:+.2f}%)")
-    print(f"{'─'*80}\n")
+    print(f"{'-'*80}\n")
     
     if improvement_combined > improvement_ccm:
         print(f"[SUCCESS] Combined model DAHA IYI! ({improvement_combined - improvement_ccm:.2f}% fark)")
@@ -296,15 +301,15 @@ def test_single_image(image_path, checkpoint_path=None, out_dir='output/ccm_test
 
 def main():
     parser = argparse.ArgumentParser(description='CCM Test Script')
-    parser.add_argument('--low', type=str, default='/data/lol_dataset/eval15/low/79.png',
+    parser.add_argument('--low', type=str, default='data/lol_dataset/eval15/low/79.png',
                        help='Dusuk isik goruntu yolu')
-    parser.add_argument('--high', type=str, default='/data/lol_dataset/eval15/high/79.png',
+    parser.add_argument('--high', type=str, default='data/lol_dataset/eval15/high/79.png',
                        help='Normal isik (ground truth) goruntu yolu')
     parser.add_argument('--image', type=str, default=None,
                        help='Tekil goruntu testi icin goruntu yolu')
-    parser.add_argument('--checkpoint', type=str, default='/src/checkpoints/ccm/best_combined_model.pth',
+    parser.add_argument('--checkpoint', type=str, default=DEFAULT_COMBINED_CHECKPOINT,
                        help='Egitilmis model checkpoint yolu')
-    parser.add_argument('--out_dir', type=str, default='/output/ccm_tests',
+    parser.add_argument('--out_dir', type=str, default='output/ccm_tests',
                        help='Cikti klasoru')
     args = parser.parse_args()
     

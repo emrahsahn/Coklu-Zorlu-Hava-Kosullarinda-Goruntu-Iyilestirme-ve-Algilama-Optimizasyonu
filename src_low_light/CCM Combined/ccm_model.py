@@ -13,6 +13,7 @@ Modüller:
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from pathlib import Path
 
 
 class ConvBlock(nn.Module):
@@ -229,6 +230,18 @@ class CombinedLoss(nn.Module):
 # UTILITY FUNCTIONS
 # ============================================================================
 
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent.parent
+DEFAULT_CCM_CHECKPOINT_DIR = PROJECT_ROOT / 'src_low_light' / 'checkpoints' / 'ccm'
+
+
+def _safe_torch_load(checkpoint_path, device):
+    """
+    PyTorch 2.6 defaults torch.load(..., weights_only=True), which breaks
+    older training checkpoints that contain optimizer/state metadata.
+    """
+    return torch.load(checkpoint_path, map_location=device, weights_only=False)
+
 def check_device_info():
     """GPU/CPU bilgisini kontrol et ve yazdır"""
     print("\n" + "="*80)
@@ -261,7 +274,7 @@ def load_trained_model(checkpoint_path, device):
     model = CombinedEnhancementModule()
     
     if os.path.exists(checkpoint_path):
-        checkpoint = torch.load(checkpoint_path, map_location=device)
+        checkpoint = _safe_torch_load(checkpoint_path, device)
         model.load_state_dict(checkpoint['model_state_dict'])
         epoch = checkpoint.get('epoch', 'N/A')
         val_loss = checkpoint.get('val_loss', None)
@@ -281,7 +294,7 @@ def load_illum_model(checkpoint_path, device):
     model = IlluminationEnhancementModule()
     
     if os.path.exists(checkpoint_path):
-        checkpoint = torch.load(checkpoint_path, map_location=device)
+        checkpoint = _safe_torch_load(checkpoint_path, device)
         model.load_state_dict(checkpoint['model_state_dict'])
         epoch = checkpoint.get('epoch', 'N/A')
         val_loss = checkpoint.get('val_loss', None)
@@ -301,7 +314,7 @@ def load_ccm_model(checkpoint_path, device):
     model = ColorCorrectionModule()
     
     if os.path.exists(checkpoint_path):
-        checkpoint = torch.load(checkpoint_path, map_location=device)
+        checkpoint = _safe_torch_load(checkpoint_path, device)
         model.load_state_dict(checkpoint['model_state_dict'])
         epoch = checkpoint.get('epoch', 'N/A')
         val_loss = checkpoint.get('val_loss', None)

@@ -15,13 +15,39 @@ from cidnet_model import CIDNet
 from losses import CIDNetLoss
 
 
+def _lol_low_high_dirs(dataset_root, subset):
+    """
+    Resolve low/high folders for LOL-style datasets.
+
+    1) LOL-v2 / CCM layout (same as train_ccm.py):
+         dataset_root/our485/{low,high}  -> train
+         dataset_root/eval15/{low,high}  -> val/test
+
+    2) Classic layout:
+         dataset_root/train/{low,high}, dataset_root/test/{low,high}
+    """
+    root = dataset_root
+    v2_train = os.path.join(root, 'our485', 'low')
+    v2_eval = os.path.join(root, 'eval15', 'low')
+    if os.path.isdir(v2_train) and os.path.isdir(v2_eval):
+        if subset == 'train':
+            return os.path.join(root, 'our485', 'low'), os.path.join(root, 'our485', 'high')
+        return os.path.join(root, 'eval15', 'low'), os.path.join(root, 'eval15', 'high')
+
+    split = 'train' if subset == 'train' else 'test'
+    return os.path.join(root, split, 'low'), os.path.join(root, split, 'high')
+
+
 class LOLDataset(Dataset):
     """
     LOL (Low-Light) Dataset Loader
-    Expected structure:
-      dataset_root/
-        low/  (low-light images)
-        high/ (normal-light/ground truth images)
+    Expected structure (classic):
+      dataset_root/train/low, train/high
+      dataset_root/test/low, test/high
+
+    Or LOL-v2 / CCM Combined layout:
+      dataset_root/our485/low, our485/high
+      dataset_root/eval15/low, eval15/high
     """
     def __init__(self, dataset_root, subset='train', image_size=256):
         super(LOLDataset, self).__init__()
@@ -30,8 +56,7 @@ class LOLDataset(Dataset):
         self.image_size = image_size
         
         # Paths for low and high light images
-        self.low_dir = os.path.join(dataset_root, subset, 'low')
-        self.high_dir = os.path.join(dataset_root, subset, 'high')
+        self.low_dir, self.high_dir = _lol_low_high_dirs(dataset_root, subset)
         
         # Get list of image files
         if os.path.exists(self.low_dir):
@@ -158,7 +183,7 @@ class CIDNetPipeline:
     
     def load_checkpoint(self, filepath):
         """Load model checkpoint"""
-        checkpoint = torch.load(filepath, map_location=self.device)
+        checkpoint = torch.load(filepath, map_location=self.device, weights_only=False)
         self.cidnet.load_state_dict(checkpoint['cidnet'])
         print(f"Checkpoint loaded from {filepath}")
 

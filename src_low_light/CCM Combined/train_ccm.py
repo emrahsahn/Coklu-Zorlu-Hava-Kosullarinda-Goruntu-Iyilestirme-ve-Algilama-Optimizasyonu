@@ -4,19 +4,19 @@ Her modül için ayrı eğitim ve test desteği
 
 Kullanım:
   -- IlluminationEnhancementModule --
-    python src/train_ccm.py --mode train_illum --epochs 50
-    python src/train_ccm.py --mode test_illum  --checkpoint src/checkpoints/ccm/best_illum_model.pth
+    python "src_low_light/CCM Combined/train_ccm.py" --mode train_illum --epochs 50
+    python "src_low_light/CCM Combined/train_ccm.py" --mode test_illum --checkpoint "src_low_light/checkpoints/ccm/best_illum_model.pth"
 
   -- ColorCorrectionModule --
-    python src/train_ccm.py --mode train_ccm   --epochs 50
-    python src/train_ccm.py --mode test_ccm    --checkpoint src/checkpoints/ccm/best_ccm_model.pth
+    python "src_low_light/CCM Combined/train_ccm.py" --mode train_ccm --epochs 50
+    python "src_low_light/CCM Combined/train_ccm.py" --mode test_ccm --checkpoint "src_low_light/checkpoints/ccm/best_ccm_model.pth"
 
   -- CombinedEnhancementModule (Illum + CCM birlikte) --
-    python src/train_ccm.py --mode train_combined --epochs 50
-    python src/train_ccm.py --mode test_combined  --checkpoint src/checkpoints/ccm/best_combined_model.pth
+    python "src_low_light/CCM Combined/train_ccm.py" --mode train_combined --epochs 50
+    python "src_low_light/CCM Combined/train_ccm.py" --mode test_combined --checkpoint "src_low_light/checkpoints/ccm/best_combined_model.pth"
 
   -- Hepsini birden eğit ve karşılaştır --
-    python src/train_ccm.py --mode compare --epochs 30
+    python "src_low_light/CCM Combined/train_ccm.py" --mode compare --epochs 30
 """
 
 import torch
@@ -31,6 +31,7 @@ import os
 import argparse
 from datetime import datetime
 from tqdm import tqdm
+from pathlib import Path
 
 # Model import
 from ccm_model import (
@@ -44,6 +45,11 @@ from ccm_model import (
     load_illum_model,
     load_ccm_model,
 )
+
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent.parent
+DEFAULT_CCM_CHECKPOINT_DIR = str(PROJECT_ROOT / 'src_low_light' / 'checkpoints' / 'ccm')
+DEFAULT_CCM_LOG_DIR = str(PROJECT_ROOT / 'src_low_light' / 'logs' / 'ccm')
 
 
 class LOLDataset(Dataset):
@@ -281,7 +287,7 @@ def _forward_combined(model, low, high):
 # ============================================================================
 
 def train_illumination_model(train_loader, val_loader, device, epochs=50, lr=1e-4,
-                              save_dir='src/checkpoints/ccm', log_dir='src/logs/ccm'):
+                              save_dir=DEFAULT_CCM_CHECKPOINT_DIR, log_dir=DEFAULT_CCM_LOG_DIR):
     """Sadece IlluminationEnhancementModule'ü eğitir"""
     model = IlluminationEnhancementModule()
     return _run_training_loop(
@@ -295,7 +301,7 @@ def train_illumination_model(train_loader, val_loader, device, epochs=50, lr=1e-
 
 
 def train_ccm_model(train_loader, val_loader, device, epochs=50, lr=1e-4,
-                    save_dir='src/checkpoints/ccm', log_dir='src/logs/ccm'):
+                    save_dir=DEFAULT_CCM_CHECKPOINT_DIR, log_dir=DEFAULT_CCM_LOG_DIR):
     """Sadece ColorCorrectionModule'ü eğitir"""
     model = ColorCorrectionModule()
     return _run_training_loop(
@@ -309,7 +315,7 @@ def train_ccm_model(train_loader, val_loader, device, epochs=50, lr=1e-4,
 
 
 def train_combined_model(train_loader, val_loader, device, epochs=50, lr=1e-4,
-                          save_dir='src/checkpoints/ccm', log_dir='src/logs/ccm'):
+                          save_dir=DEFAULT_CCM_CHECKPOINT_DIR, log_dir=DEFAULT_CCM_LOG_DIR):
     """Illum + CCM birlikte (CombinedEnhancementModule) eğitir"""
     model = CombinedEnhancementModule()
     return _run_training_loop(
@@ -411,8 +417,8 @@ def main():
     parser.add_argument('--image_size',  type=int,   default=256,                              help='Goruntu boyutu')
     parser.add_argument('--dataset',     type=str,   default='data/lol_dataset',               help='Dataset yolu')
     parser.add_argument('--checkpoint',  type=str,   default=None,                             help='Test icin checkpoint yolu')
-    parser.add_argument('--save_dir',    type=str,   default='src/checkpoints/ccm',            help='Checkpoint kayit klasoru')
-    parser.add_argument('--log_dir',     type=str,   default='src/logs/ccm',                   help='TensorBoard log klasoru')
+    parser.add_argument('--save_dir',    type=str,   default=DEFAULT_CCM_CHECKPOINT_DIR,       help='Checkpoint kayit klasoru')
+    parser.add_argument('--log_dir',     type=str,   default=DEFAULT_CCM_LOG_DIR,              help='TensorBoard log klasoru')
     args = parser.parse_args()
 
     print("="*80)
@@ -484,25 +490,25 @@ def main():
 
         results = {}
 
-        print("\n" + "─"*80)
+        print("\n" + "-"*80)
         print("ADIM 1/3: IlluminationEnhancementModule")
-        print("─"*80)
+        print("-"*80)
         m_illum = train_illumination_model(train_loader, val_loader, device,
                                            epochs=args.epochs, lr=args.lr,
                                            save_dir=args.save_dir, log_dir=args.log_dir)
         results['illum'] = evaluate_model(m_illum, val_loader, device, 'illum')
 
-        print("\n" + "─"*80)
+        print("\n" + "-"*80)
         print("ADIM 2/3: ColorCorrectionModule")
-        print("─"*80)
+        print("-"*80)
         m_ccm = train_ccm_model(train_loader, val_loader, device,
                                 epochs=args.epochs, lr=args.lr,
                                 save_dir=args.save_dir, log_dir=args.log_dir)
         results['ccm'] = evaluate_model(m_ccm, val_loader, device, 'ccm')
 
-        print("\n" + "─"*80)
+        print("\n" + "-"*80)
         print("ADIM 3/3: CombinedEnhancementModule")
-        print("─"*80)
+        print("-"*80)
         m_combined = train_combined_model(train_loader, val_loader, device,
                                           epochs=args.epochs, lr=args.lr,
                                           save_dir=args.save_dir, log_dir=args.log_dir)

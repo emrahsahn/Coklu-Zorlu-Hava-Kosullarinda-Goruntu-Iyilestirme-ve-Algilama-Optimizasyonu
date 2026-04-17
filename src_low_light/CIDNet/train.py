@@ -1,5 +1,8 @@
 """
-Training script for CIDNet
+Training script for CIDNet.
+
+CIDNet's first-stage LCA uses full-spatial attention (memory ~ O((HW)^2)); use a small
+`image_size` (default 64) on typical GPUs — 256 is usually infeasible without OOM.
 """
 import torch
 import torch.optim as optim
@@ -9,18 +12,25 @@ import os
 from tqdm import tqdm
 import argparse
 from datetime import datetime
+from pathlib import Path
 
 from app import LOLDataset, CIDNetPipeline
 
+_BASE = Path(__file__).resolve().parent
+_PROJECT_ROOT = _BASE.parent.parent
+_DEFAULT_DATASET = str(_PROJECT_ROOT / 'data' / 'lol_dataset')
+_DEFAULT_CHECKPOINT_DIR = str(_PROJECT_ROOT / 'src_low_light' / 'checkpoints' / 'cidnet')
+_DEFAULT_LOG_DIR = str(_PROJECT_ROOT / 'src_low_light' / 'logs' / 'cidnet')
 
-def train_epoch(pipeline, dataloader, optimizer, epoch, writer, device):
+
+def train_epoch(pipeline, dataloader, optimizer, epoch, num_epochs, writer, device):
     """Train for one epoch"""
     pipeline.train_mode()
     
     total_loss = 0.0
     loss_components = {}
     
-    pbar = tqdm(dataloader, desc=f"Epoch {epoch}")
+    pbar = tqdm(dataloader, desc=f"Epoch {epoch + 1}/{num_epochs} [TRAIN]")
     
     for batch_idx, batch in enumerate(pbar):
         low_rgb = batch['low'].to(device)
@@ -56,7 +66,7 @@ def train_epoch(pipeline, dataloader, optimizer, epoch, writer, device):
     return avg_loss, loss_components
 
 
-def validate(pipeline, dataloader, epoch, writer, device):
+def validate(pipeline, dataloader, epoch, num_epochs, writer, device):
     """Validation"""
     pipeline.eval_mode()
     
@@ -64,7 +74,9 @@ def validate(pipeline, dataloader, epoch, writer, device):
     loss_components = {}
     
     with torch.no_grad():
-        for batch_idx, batch in enumerate(tqdm(dataloader, desc="Validation")):
+        for batch_idx, batch in enumerate(
+            tqdm(dataloader, desc=f"Epoch {epoch + 1}/{num_epochs} [VAL]")
+        ):
             low_rgb = batch['low'].to(device)
             high_rgb = batch['high'].to(device)
             
@@ -94,23 +106,31 @@ def validate(pipeline, dataloader, epoch, writer, device):
 
 def main():
     parser = argparse.ArgumentParser(description='Train CIDNet')
-    parser.add_argument('--dataset_root', type=str, default='./data/LOL',
-                       help='Path to LOL dataset')
+    parser.add_argument('--dataset_root', type=str, default=_DEFAULT_DATASET,
+                       help='Path to LOL dataset (our485+eval15 or train/test layout)')
     parser.add_argument('--batch_size', type=int, default=4,
                        help='Batch size for training')
     parser.add_argument('--epochs', type=int, default=100,
                        help='Number of training epochs')
     parser.add_argument('--lr', type=float, default=1e-4,
                        help='Learning rate')
-    parser.add_argument('--image_size', type=int, default=256,
-                       help='Image size for training')
+    parser.add_argument(
+        '--image_size',
+        type=int,
+        default=64,
+        help=(
+            'Train/val square crop (H=W). CIDNet LCA uses full-spatial attention at the '
+            'first stage (memory ~ O((HW)^2)); 256 is infeasible on typical 6–8GB GPUs. '
+            'Use 64 (default) or lower; try batch_size 2 if you need slightly larger crops.'
+        ),
+    )
     parser.add_argument('--base_channels', type=int, default=32,
                        help='Base channels for CIDNet')
     parser.add_argument('--num_heads', type=int, default=4,
                        help='Number of attention heads')
-    parser.add_argument('--checkpoint_dir', type=str, default='./checkpoints',
+    parser.add_argument('--checkpoint_dir', type=str, default=_DEFAULT_CHECKPOINT_DIR,
                        help='Directory to save checkpoints')
-    parser.add_argument('--log_dir', type=str, default='./logs',
+    parser.add_argument('--log_dir', type=str, default=_DEFAULT_LOG_DIR,
                        help='Directory for tensorboard logs')
     parser.add_argument('--resume', type=str, default=None,
                        help='Path to checkpoint to resume from')
@@ -190,7 +210,7 @@ def main():
         
         # Train
         train_loss, train_components = train_epoch(
-            pipeline, train_loader, optimizer, epoch, writer, args.device
+            pipeline, train_loader, optimizer, epoch, args.epochs, writer, args.device
         )
         
         # Log training metrics
@@ -203,7 +223,7 @@ def main():
         # Validate
         if len(val_dataset) > 0:
             val_loss, val_components = validate(
-                pipeline, val_loader, epoch, writer, args.device
+                pipeline, val_loader, epoch, args.epochs, writer, args.device
             )
             
             print(f"\nValidation - Average loss: {val_loss:.6f}")

@@ -4,13 +4,13 @@ Webcam veya video dosyasından düşük ışık görüntüsünü iyileştir
 
 Kullanım:
   -- Webcam (kamera cihazı) --
-    python src_low_light/live_inference.py --mode webcam --checkpoint src/checkpoints/ccm/best_combined_model.pth
+    python "src_low_light/CCM Combined/live_inference.py" --mode webcam --checkpoint "src_low_light/checkpoints/ccm/best_combined_model.pth"
 
   -- Video dosyası --
-    python src_low_light/live_inference.py --mode video --input video.mp4 --checkpoint src/checkpoints/ccm/best_combined_model.pth --output output_enhanced.mp4
+    python "src_low_light/CCM Combined/live_inference.py" --mode video --input video.mp4 --checkpoint "src_low_light/checkpoints/ccm/best_combined_model.pth" --output output_enhanced.mp4
 
   -- Ekran üzerinde göster (real-time) --
-    python src_low_light/live_inference.py --mode webcam --display True --checkpoint src/checkpoints/ccm/best_combined_model.pth
+    python "src_low_light/CCM Combined/live_inference.py" --mode webcam --display True --checkpoint "src_low_light/checkpoints/ccm/best_combined_model.pth"
 """
 
 import torch
@@ -20,9 +20,14 @@ import argparse
 import os
 from datetime import datetime
 import time
+from pathlib import Path
 
 # Model import
 from ccm_model import CombinedEnhancementModule, check_device_info, load_trained_model
+
+BASE_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = BASE_DIR.parent.parent
+DEFAULT_COMBINED_CHECKPOINT = str(PROJECT_ROOT / 'src_low_light' / 'checkpoints' / 'ccm' / 'best_combined_model.pth')
 
 
 class LiveInference:
@@ -259,7 +264,7 @@ def main():
                        help='Video dosyası yolu (--mode video olduğunda gerekli)')
     parser.add_argument('--output', type=str, default=None,
                        help='Çıktı video dosyası yolu (opsiyonel)')
-    parser.add_argument('--checkpoint', type=str, default='src/checkpoints/ccm/best_combined_model.pth',
+    parser.add_argument('--checkpoint', type=str, default=DEFAULT_COMBINED_CHECKPOINT,
                        help='Eğitilmiş model checkpoint yolu')
     parser.add_argument('--display', type=bool, default=True,
                        help='Ekranda göster')
