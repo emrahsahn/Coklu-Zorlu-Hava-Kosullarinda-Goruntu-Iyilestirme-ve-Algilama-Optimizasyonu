@@ -1,6 +1,7 @@
 import os
 import kagglehub
 
+# Function to download the LOL dataset from Kaggle 
 
 def download_dataset_to(dest_dir=None):
 	"""Download the dataset into `dest_dir`. If None, uses current working directory."""
@@ -25,5 +26,5 @@ def download_dataset_to(dest_dir=None):
 
 if __name__ == "__main__":
 	# download into the directory where this script is run
-	path = download_dataset_to()
+	path = download_dataset_to("C:\\Users\\sahin\\Documents\\GitHub\\Coklu-Zorlu-Hava-Kosullarinda-Goruntu-Iyilestirme-ve-Algilama-Optimizasyonu\\data")
 	print("Path to dataset files:", path)

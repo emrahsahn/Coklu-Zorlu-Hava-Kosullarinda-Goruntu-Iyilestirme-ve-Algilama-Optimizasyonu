@@ -1,0 +1,51 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "Uçtan Uca Görüntü İyileştirme ve Tespit Veri Akışı",
+    "output": "docs/assets/pipeline_dataflow.html",
+    "visual_preset": "signal-flow",
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "full-flow", "label": "Tam İyileştirme Akışı", "focus": ["input_feed", "analyzer", "cidnet", "ffa", "ddn", "enhanced", "yolo", "evaluator", "dashboard"], "note": "Görüntünün alınmasından restorasyon ve YOLOv8 değerlendirmesine kadar olan akış." },
+      { "id": "eval-metrics", "label": "Değerlendirme ve Raporlama", "focus": ["input_feed", "enhanced", "yolo", "evaluator", "dashboard"], "note": "Orijinal ve iyileştirilmiş görüntüler üzerinden metrik çıkarımı." }
+    ]
+  },
+  "stages": [
+    { "label": "1. Veri Girişi" },
+    { "label": "2. Hava Durumu Analizi" },
+    { "label": "3. Derin Ağ Restorasyonu" },
+    { "label": "4. Algılama ve Tespit" },
+    { "label": "5. Değerlendirme ve Çıktı" }
+  ],
+  "nodes": [
+    { "id": "input_feed", "type": "frontend", "label": "Kamera / Veri Seti", "sublabel": "Ham RGB Görüntü", "stage": 0, "row": 1, "tag": "Input" },
+    { "id": "analyzer", "type": "backend", "label": "WeatherDetector", "sublabel": "Luminance / DarkChannel", "stage": 1, "row": 1, "tag": "Heuristic Router" },
+    { "id": "cidnet", "type": "backend", "label": "HVI-CIDNet", "sublabel": "Dual-Branch UNet (HVI)", "stage": 2, "row": 0, "tag": "Low-Light" },
+    { "id": "ffa", "type": "backend", "label": "FFA-Net (ITS/OTS)", "sublabel": "Attention Dehazing", "stage": 2, "row": 1, "tag": "Dehazing" },
+    { "id": "ddn", "type": "backend", "label": "DDN Modeli", "sublabel": "ResNet Deraining", "stage": 2, "row": 2, "tag": "Deraining" },
+    { "id": "enhanced", "type": "cloud", "label": "İyileştirilmiş Görüntü", "sublabel": "Gürültüsüz / Net RGB", "stage": 3, "row": 1, "tag": "Enhanced" },
+    { "id": "yolo", "type": "backend", "label": "YOLOv8 Detektörü", "sublabel": "BBox ve Sınıf Tespiti", "stage": 3, "row": 0, "tag": "Perception" },
+    { "id": "evaluator", "type": "database", "label": "Metrik Hesaplayıcı", "sublabel": "PSNR, SSIM, MAE, mAP", "stage": 4, "row": 0, "tag": "Metrics" },
+    { "id": "dashboard", "type": "external", "label": "Raporlama & CSV", "sublabel": "Benchmark Çıktıları", "stage": 4, "row": 1, "tag": "Output" }
+  ],
+  "flows": [
+    { "from": "input_feed", "to": "analyzer", "label": "Görüntü Akışı", "variant": "emphasis", "route": "straight" },
+    { "from": "analyzer", "to": "cidnet", "label": "Düşük Işık", "variant": "emphasis", "route": "straight" },
+    { "from": "analyzer", "to": "ffa", "label": "Sis / Pus", "variant": "emphasis", "route": "straight" },
+    { "from": "analyzer", "to": "ddn", "label": "Yağmur", "variant": "emphasis", "route": "straight" },
+    { "from": "cidnet", "to": "enhanced", "label": "HVI Dönüşümü", "variant": "emphasis", "route": "straight" },
+    { "from": "ffa", "to": "enhanced", "label": "Sis Temizleme", "variant": "emphasis", "route": "straight" },
+    { "from": "ddn", "to": "enhanced", "label": "Yağmur Filtreleme", "variant": "emphasis", "route": "straight" },
+    { "from": "enhanced", "to": "yolo", "label": "İyileştirilmiş RGB", "variant": "emphasis", "route": "straight" },
+    { "from": "yolo", "to": "evaluator", "label": "Tespit Skorları", "variant": "emphasis", "route": "straight" },
+    { "from": "enhanced", "to": "evaluator", "label": "Görsel Kalite", "variant": "default", "route": "straight" },
+    { "from": "evaluator", "to": "dashboard", "label": "Özet Rapor", "variant": "emphasis", "route": "straight" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Otomatik Yönlendirme", "items": ["Parlaklık, kontrast ve renk kanalı incelemesi ile anlık hava durumu tespiti", "Tekil ve çoklu zorlu hava koşullarına uygun modele otomatik yönlendirme"] },
+    { "dot": "emerald", "title": "Model Çeşitliliği", "items": ["HVI-CIDNet (Düşük Işık: LOL v1 / v2)", "FFA-Net (Sis: RESIDE ITS / OTS)", "DDN (Yağmur: Rain100H / DDN-Data)"] },
+    { "dot": "rose", "title": "Nesne Tespiti İyileştirmesi", "items": ["Zorlu şartlarda tespit edilemeyen nesnelerin restorasyon sonrası tespiti", "YOLOv8 mimarisi ile uçtan uca çıkarım ve metrik ölçümü"] }
+  ]
+}

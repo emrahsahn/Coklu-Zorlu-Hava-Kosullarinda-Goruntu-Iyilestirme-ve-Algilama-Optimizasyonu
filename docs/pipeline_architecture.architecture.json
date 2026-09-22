@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Çoklu Zorlu Hava Koşullarında Görüntü İyileştirme ve Algılama Optimizasyonu",
+    "output": "docs/assets/pipeline_architecture.html",
+    "visual_preset": "blueprint",
+    "animation": "trace",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "full-pipeline",
+        "label": "Uçtan Uca İyileştirme ve Algılama Hattı",
+        "focus": ["input_image", "weather_router", "cidnet_core", "ffa_core", "ddn_core", "enhanced_img", "yolo_detector", "metrics_engine"],
+        "note": "Görüntü girişinden hava durumu yönlendirmesine, derin restorasyon ağlarından YOLOv8 nesne tespitine ve metrik değerlendirmesine tam akış."
+      },
+      {
+        "id": "low-light-branch",
+        "label": "Düşük Işık Restorasyonu (HVI-CIDNet)",
+        "focus": ["input_image", "weather_router", "cidnet_core", "enhanced_img", "yolo_detector", "metrics_engine"],
+        "note": "HVI renk uzayı ve Dual-branch Lighten Cross-Attention (LCA) ile aydınlatma ve gürültü bastırma."
+      },
+      {
+        "id": "haze-rain-branch",
+        "label": "Sis ve Yağmur Restorasyonu (FFA-Net & DDN)",
+        "focus": ["input_image", "weather_router", "ffa_core", "ddn_core", "enhanced_img", "yolo_detector", "metrics_engine"],
+        "note": "FFA-Net (ITS/OTS) ve DDN kalıntı filtreleme mimarileri."
+      }
+    ]
+  },
+  "components": [
+    { "id": "input_image", "type": "external", "label": "Girdi Görüntüsü", "sublabel": "Düşük Işık / Sis / Yağmur", "pos": [40, 300], "size": [130, 60] },
+    { "id": "weather_router", "type": "security", "label": "WeatherDetector", "sublabel": "Karakteristik Analiz", "pos": [230, 300], "size": [140, 60], "tag": "Kural & Heuristic" },
+    { "id": "cidnet_core", "type": "backend", "label": "HVI-CIDNet", "sublabel": "RGB ↔ HVI + LCA UNet", "pos": [490, 150], "size": [150, 64], "tag": "Low-Light (LOL)" },
+    { "id": "ffa_core", "type": "backend", "label": "FFA-Net", "sublabel": "Feature Fusion (ITS/OTS)", "pos": [490, 300], "size": [150, 64], "tag": "Dehazing (SOTS)" },
+    { "id": "ddn_core", "type": "backend", "label": "DDN Modeli", "sublabel": "Deep Detail ResNet", "pos": [490, 450], "size": [150, 64], "tag": "Deraining (Rain100H)" },
+    { "id": "enhanced_img", "type": "cloud", "label": "İyileştirilmiş Görüntü", "sublabel": "Yüksek Kaliteli RGB", "pos": [720, 300], "size": [140, 60] },
+    { "id": "yolo_detector", "type": "backend", "label": "YOLOv8 Detektörü", "sublabel": "Orijinal vs İyileştirilmiş", "pos": [930, 190], "size": [145, 62], "tag": "Nesne Tespiti" },
+    { "id": "metrics_engine", "type": "database", "label": "Metrik & Raporlama", "sublabel": "PSNR, SSIM, MAE, mAP", "pos": [930, 410], "size": [145, 62], "tag": "Benchmark Engine" }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Görüntü İyileştirme Motoru (Restoration Core)", "wraps": ["cidnet_core", "ffa_core", "ddn_core"], "pad": 18 },
+    { "kind": "security-group", "label": "Algılama ve Performans Doğrulama", "wraps": ["yolo_detector", "metrics_engine"], "pad": 16 }
+  ],
+  "connections": [
+    { "id": "input-to-router", "from": "input_image", "to": "weather_router", "label": "Ham Görüntü", "variant": "emphasis" },
+    { "id": "route-low-light", "from": "weather_router", "to": "cidnet_core", "label": "Düşük Işık", "fromSide": "top", "toSide": "left", "variant": "emphasis" },
+    { "id": "route-haze", "from": "weather_router", "to": "ffa_core", "label": "Sis / Pus", "variant": "emphasis" },
+    { "id": "route-rain", "from": "weather_router", "to": "ddn_core", "label": "Yağmur", "fromSide": "bottom", "toSide": "left", "variant": "emphasis" },
+    { "id": "cidnet-out", "from": "cidnet_core", "to": "enhanced_img", "fromSide": "right", "toSide": "top" },
+    { "id": "ffa-out", "from": "ffa_core", "to": "enhanced_img" },
+    { "id": "ddn-out", "from": "ddn_core", "to": "enhanced_img", "fromSide": "right", "toSide": "bottom" },
+    { "id": "enhanced-to-yolo", "from": "enhanced_img", "to": "yolo_detector", "label": "RGB Çıktı", "fromSide": "right", "toSide": "left", "variant": "emphasis" },
+    { "id": "enhanced-to-metrics", "from": "enhanced_img", "to": "metrics_engine", "label": "PSNR / SSIM", "fromSide": "right", "toSide": "left", "variant": "emphasis" },
+    { "id": "input-to-yolo", "from": "input_image", "to": "yolo_detector", "label": "Baseline", "variant": "dashed", "fromSide": "top", "toSide": "top", "via": [[105, 70], [1002.5, 70]] },
+    { "id": "yolo-to-metrics", "from": "yolo_detector", "to": "metrics_engine", "label": "Tespit Skoru", "variant": "default", "fromSide": "bottom", "toSide": "top", "labelAt": [1002.5, 330] }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Otomatik Koşul Ayrıştırma", "items": ["Parlaklık, kontrast ve frekans analizi ile dinamik model seçimi", "Düşük ışık, sis (ITS/OTS) ve yağmur izleri için özelleştirilmiş dal yönlendirmesi"] },
+    { "dot": "emerald", "title": "Çok Modlu Restorasyon Ağı", "items": ["HVI-CIDNet: Renk-yoğunluk ayrık dual-branch UNet mimarisi", "FFA-Net: Piksel ve kanal seviyesinde özellik füzyon dikkati", "DDN: Yüksek geçiren filtre tabanlı kalıntı detayı koruma"] },
+    { "dot": "rose", "title": "Nesne Tespiti ve Benchmark", "items": ["YOLOv8 ile restorasyon öncesi ve sonrası tespit doğruluğu (mAP)", "PSNR, SSIM, MAE metrikleri ile sayısal ve görsel kalite doğrulama"] }
+  ]
+}
