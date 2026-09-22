@@ -1,0 +1,2 @@
+filename,mode,count_original,count_restored,count_delta,mean_confidence_original,mean_confidence_restored,mean_confidence_delta,psnr,ssim,mae,mode_specific_json,yol_panel,girdi_hw,cikti_hw,boyut_ayni,otomatik_ozet,yol_ozet
+a.png,none,1,1,0,0.36305561661720276,0.36305561661720276,0.0,inf,1.0,0.0,"{""geometry"": {""original_hw"": [32, 32], ""restored_hw"": [32, 32], ""sizes_match"": true}, ""panel"": ""bypass"", ""bypass"": {""note"": ""Restorasyon atlandı; görüntü doğrudan geçirildi.""}}",bypass,32×32,32×32,True,,İyileştirme yok (bypass)

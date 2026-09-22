@@ -1,0 +1,4 @@
+has_gt,image,repro_psnr_vs_pred_ffa,repro_ssim_vs_pred_ffa,tag,task,time_ms
+False,0099_0.9_0.16.jpg,,,local_its,its,1954.718300010427
+False,1400_2.png,,,local_its,its,284.51399999903515
+False,043.png,70.15454380533579,0.9999388648732973,local_ots,ots,6525.934999997844

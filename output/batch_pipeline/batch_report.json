@@ -1,0 +1,30 @@
+{
+  "num_images": 1,
+  "avg_psnr": 0.0,
+  "avg_ssim": 1.0,
+  "avg_mae": 0.0,
+  "avg_count_original": 1.0,
+  "avg_count_restored": 1.0,
+  "rows": [
+    {
+      "filename": "a.png",
+      "mode": "none",
+      "count_original": 1,
+      "count_restored": 1,
+      "count_delta": 0,
+      "mean_confidence_original": 0.36305561661720276,
+      "mean_confidence_restored": 0.36305561661720276,
+      "mean_confidence_delta": 0.0,
+      "psnr": Infinity,
+      "ssim": 1.0,
+      "mae": 0.0,
+      "mode_specific_json": "{\"geometry\": {\"original_hw\": [32, 32], \"restored_hw\": [32, 32], \"sizes_match\": true}, \"panel\": \"bypass\", \"bypass\": {\"note\": \"Restorasyon atlandı; görüntü doğrudan geçirildi.\"}}",
+      "yol_panel": "bypass",
+      "girdi_hw": "32×32",
+      "cikti_hw": "32×32",
+      "boyut_ayni": true,
+      "otomatik_ozet": "",
+      "yol_ozet": "İyileştirme yok (bypass)"
+    }
+  ]
+}

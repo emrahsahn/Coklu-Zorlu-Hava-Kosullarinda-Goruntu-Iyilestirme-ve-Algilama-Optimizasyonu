@@ -1,21 +1,91 @@
+# Python & Byte-compiled / optimized files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+.env
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Model Checkpoints & Large Weights
+*.pth
+*.pt
+*.pk
+*.ckpt
+*.weights
+*.onnx
+checkpoints/
+src/checkpoints/
+src_low_light/checkpoints/
+FFA-Net/trained_models/
+FFA-Net/FFA-Net/trained_models/
+Deep_Detailed_Network-PyTorch-master/checkpoints/
+Deep_Detailed_Network-PyTorch-master/model/rain1400_finetune/
+Deep_Detailed_Network-PyTorch-master/model/rain1400_finetune_new/
+Deep_Detailed_Network-PyTorch-master/model/rain100L/
+
+# Datasets & Large Data / Test Image Dumps
 data/
+datasets/
+dataset/
+LOL/
+SOTS/
+Rain100H/
+RESIDE/
+Deep_Detailed_Network-PyTorch-master/Rain1400_test/
+Deep_Detailed_Network-PyTorch-master/input/
+Deep_Detailed_Network-PyTorch-master/output/
+
+# Logs & Monitoring
 logs/
 api/
-
 src/logs/
-src_low_light/**/logs/
-src/checkpoints/
-checkpoints/
-src_low_light/checkpoints/
 src_low_light/logs/
+src_low_light/**/logs/
 
-.venv/
-.vscode/
+# Evaluation Output Dumps (keep markdown/csv benchmarks & key comparison figures, ignore bulk test png dumps)
+Deep_Detailed_Network-PyTorch-master/output_eval/
+output/cidnet_tests/
+output/hvi_cidnet_tests/
+output/batch_pipeline/*.png
+output/batch_pipeline/*.jpg
+output/batch_pipeline/*.jpeg
 
-HVI-CIDNet/
+# Temporary Tools, Scratch and Extracted Files
+archify_temp/
+extracted_report.txt
+*.resolved
+.system_generated/
 document/
-
-
-__pycache__/
-*.pyc
-*.pyo
